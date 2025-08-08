@@ -1,5 +1,6 @@
 import { ServerContext } from "@/common/contexts/ServerContext.jsx";
 import { IdentityContext } from "@/common/contexts/IdentityContext.jsx";
+import { OrganizationContext } from "@/common/contexts/OrganizationContext.jsx";
 import {
     deleteRequest,
     postRequest,
@@ -51,6 +52,7 @@ export const ContextMenu = ({
     } = useContext(ServerContext);
 
     const { identities } = useContext(IdentityContext);
+    const { canModifyServer } = useContext(OrganizationContext);
 
     const [showIdentitySubmenu, setShowIdentitySubmenu] = useState(false);
     const [showSftpSubmenu, setShowSftpSubmenu] = useState(false);
@@ -65,6 +67,7 @@ export const ContextMenu = ({
         : null;
 
     const isOrgFolder = id && id.toString().startsWith("org-");
+    const canUserModifyServer = server ? canModifyServer(server) : false;
 
     const createFolder = () => {
         const organizationId = isOrgFolder ? id.toString().split("-")[1] : undefined;
@@ -272,24 +275,28 @@ export const ContextMenu = ({
                         </>
                     )}
 
-                    <div className="context-item" onClick={editServer}>
-                        <Icon path={mdiPencil} />
-                        <p>{t("servers.contextMenu.editServer")}</p>
-                    </div>
+                    {canUserModifyServer && (
+                        <>
+                            <div className="context-item" onClick={editServer}>
+                                <Icon path={mdiPencil} />
+                                <p>{t("servers.contextMenu.editServer")}</p>
+                            </div>
 
-                    <div className="context-item" onClick={duplicateServer}>
-                        <Icon path={mdiContentCopy} />
-                        <p>{t("servers.contextMenu.duplicateServer")}</p>
-                    </div>
+                            <div className="context-item" onClick={duplicateServer}>
+                                <Icon path={mdiContentCopy} />
+                                <p>{t("servers.contextMenu.duplicateServer")}</p>
+                            </div>
 
-                    <div className="context-item" onClick={deleteServer}>
-                        <Icon path={mdiServerMinus} />
-                        <p>{t("servers.contextMenu.deleteServer")}</p>
-                    </div>
+                            <div className="context-item" onClick={deleteServer}>
+                                <Icon path={mdiServerMinus} />
+                                <p>{t("servers.contextMenu.deleteServer")}</p>
+                            </div>
+                        </>
+                    )}
                 </>
             )}
 
-            {type === "pve-object" && (
+            {type === "pve-object" && canUserModifyServer && (
                 <>
                     <div className="context-item" onClick={editPVEServer}>
                         <Icon path={mdiPencil} />

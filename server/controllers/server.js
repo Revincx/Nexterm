@@ -212,7 +212,7 @@ module.exports.listServers = async (accountId) => {
             folder.entries.push({
                 type: "server", id: server.id, icon: server.icon, name: server.name,
                 position: server.position, identities: JSON.parse(server.identities || "[]"), protocol: server.protocol,
-                ip: server.ip,
+                ip: server.ip, accountId: server.accountId, organizationId: server.organizationId,
             });
         }
     });
@@ -234,6 +234,7 @@ module.exports.listServers = async (accountId) => {
             folder.entries.push({
                 type: "pve-server", id: server.id, name: server.name, online: server.online === 1,
                 entries: JSON.parse(server.resources || "[]"), ip: server.ip,
+                accountId: server.accountId, organizationId: server.organizationId,
             });
         }
     });
