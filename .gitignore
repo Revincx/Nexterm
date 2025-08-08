@@ -141,3 +141,6 @@ data/
 docs/.vitepress/dist
 docs/.vitepress/cache
 docs/public/openapi.json
+
+# Database files
+server/database.sqlite
