@@ -49,10 +49,11 @@ export const ContextMenu = ({
         getServerById,
         getPVEServerById,
         getPVEContainerById,
+        getFolderById,
     } = useContext(ServerContext);
 
     const { identities } = useContext(IdentityContext);
-    const { canModifyServer } = useContext(OrganizationContext);
+    const { canModifyServer, hasOrganizationAdminAccess } = useContext(OrganizationContext);
 
     const [showIdentitySubmenu, setShowIdentitySubmenu] = useState(false);
     const [showSftpSubmenu, setShowSftpSubmenu] = useState(false);
@@ -66,11 +67,30 @@ export const ContextMenu = ({
                 : getPVEContainerById(id.split("-")[1], id.split("-")[2])
         : null;
 
+    const folder = id && type === "folder-object" ? getFolderById(id) : null;
+
     const isOrgFolder = id && id.toString().startsWith("org-");
     const canUserModifyServer = server ? canModifyServer(server) : false;
+    
+    // For organization folders and regular folders within organizations, determine if user can modify them
+    const canModifyFolder = (() => {
+        if (isOrgFolder) {
+            const orgId = parseInt(id.toString().split("-")[1]);
+            return hasOrganizationAdminAccess(orgId);
+        } else if (folder && folder.organizationId) {
+            return hasOrganizationAdminAccess(folder.organizationId);
+        }
+        return true; // Personal folders can always be modified by the user
+    })();
 
     const createFolder = () => {
-        const organizationId = isOrgFolder ? id.toString().split("-")[1] : undefined;
+        let organizationId = undefined;
+        
+        if (isOrgFolder) {
+            organizationId = id.toString().split("-")[1];
+        } else if (folder && folder.organizationId) {
+            organizationId = folder.organizationId;
+        }
 
         putRequest("folders", {
             name: "New Folder",
@@ -168,19 +188,26 @@ export const ContextMenu = ({
                         <p>{t("servers.contextMenu.createFolder")}</p>
                     </div>
                 )}
-            {type === "folder-object" && !isOrgFolder && (
+            {type === "folder-object" && (
                 <>
-                    <div className="context-item" onClick={deleteFolder}>
-                        <Icon path={mdiFolderRemove} />
-                        <p>{t("servers.contextMenu.deleteFolder")}</p>
-                    </div>
-                    <div
-                        className="context-item"
-                        onClick={() => setRenameStateId(id)}
-                    >
-                        <Icon path={mdiFormTextbox} />
-                        <p>{t("servers.contextMenu.renameFolder")}</p>
-                    </div>
+                    {/* Show rename and delete options only if user can modify this folder */}
+                    {canModifyFolder && (
+                        <>
+                            <div
+                                className="context-item"
+                                onClick={() => setRenameStateId(id)}
+                            >
+                                <Icon path={mdiFormTextbox} />
+                                <p>{t("servers.contextMenu.renameFolder")}</p>
+                            </div>
+                            <div className="context-item" onClick={deleteFolder}>
+                                <Icon path={mdiFolderRemove} />
+                                <p>{t("servers.contextMenu.deleteFolder")}</p>
+                            </div>
+                        </>
+                    )}
+                    
+                    {/* Everyone can create servers and subfolders in organization folders (if they have access) */}
                     <div className="context-item" onClick={createServer}>
                         <Icon path={mdiServerPlus} />
                         <p>{t("servers.contextMenu.createServer")}</p>
