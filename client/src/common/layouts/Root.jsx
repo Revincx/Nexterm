@@ -1,5 +1,6 @@
 import { Outlet } from "react-router-dom";
 import { UserProvider } from "@/common/contexts/UserContext.jsx";
+import { OrganizationProvider } from "@/common/contexts/OrganizationContext.jsx";
 import { ServerProvider } from "@/common/contexts/ServerContext.jsx";
 import { IdentityProvider } from "@/common/contexts/IdentityContext.jsx";
 import { ToastProvider } from "@/common/contexts/ToastContext.jsx";
@@ -20,26 +21,28 @@ export default () => {
             <ToastProvider>
                 <TerminalSettingsProvider>
                     <UserProvider>
-                        <AIProvider>
-                            <ServerProvider>
-                                <IdentityProvider>
-                                    <SnippetProvider>
-                                        <SessionProvider>
-                                            <div className="content-wrapper">
-                                                <Suspense fallback={<Loading />}>
-                                                    <Sidebar />
-                                                </Suspense>
-                                                <div className="main-content">
+                        <OrganizationProvider>
+                            <AIProvider>
+                                <ServerProvider>
+                                    <IdentityProvider>
+                                        <SnippetProvider>
+                                            <SessionProvider>
+                                                <div className="content-wrapper">
                                                     <Suspense fallback={<Loading />}>
-                                                        <Outlet />
+                                                        <Sidebar />
                                                     </Suspense>
+                                                    <div className="main-content">
+                                                        <Suspense fallback={<Loading />}>
+                                                            <Outlet />
+                                                        </Suspense>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        </SessionProvider>
-                                    </SnippetProvider>
-                                </IdentityProvider>
-                            </ServerProvider>
-                        </AIProvider>
+                                            </SessionProvider>
+                                        </SnippetProvider>
+                                    </IdentityProvider>
+                                </ServerProvider>
+                            </AIProvider>
+                        </OrganizationProvider>
                     </UserProvider>
                 </TerminalSettingsProvider>
             </ToastProvider>

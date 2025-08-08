@@ -2,7 +2,7 @@ const Server = require("../models/Server");
 const PVEServer = require("../models/PVEServer");
 const Identity = require("../models/Identity");
 const { listFolders } = require("./folder");
-const { hasOrganizationAccess, validateFolderAccess } = require("../utils/permission");
+const { hasOrganizationAccess, hasOrganizationAdminAccess, validateFolderAccess } = require("../utils/permission");
 const { Op } = require("sequelize");
 const OrganizationMember = require("../models/OrganizationMember");
 const { listIdentities } = require("./identity");
@@ -17,6 +17,20 @@ const validateServerAccess = async (accountId, server, errorMessage = "You don't
         const hasAccess = await hasOrganizationAccess(accountId, server.organizationId);
         if (!hasAccess) {
             return { code: 403, message: `You don't have access to this organization's server` };
+        }
+    }
+    return { valid: true, server };
+};
+
+const validateServerWriteAccess = async (accountId, server, errorMessage = "You don't have permission to modify this server") => {
+    if (!server) return { code: 401, message: "Server does not exist" };
+
+    if (server.accountId && server.accountId !== accountId) {
+        return { code: 403, message: errorMessage };
+    } else if (server.organizationId) {
+        const hasAdminAccess = await hasOrganizationAdminAccess(accountId, server.organizationId);
+        if (!hasAdminAccess) {
+            return { code: 403, message: "Only organization owners can edit, delete, or duplicate organization servers" };
         }
     }
     return { valid: true, server };
@@ -90,7 +104,7 @@ module.exports.createServer = async (accountId, configuration) => {
 
 module.exports.deleteServer = async (accountId, serverId) => {
     const server = await Server.findByPk(serverId);
-    const accessCheck = await validateServerAccess(accountId, server, "You don't have permission to delete this server");
+    const accessCheck = await validateServerWriteAccess(accountId, server, "You don't have permission to delete this server");
 
     if (!accessCheck.valid) return accessCheck;
 
@@ -114,7 +128,7 @@ module.exports.deleteServer = async (accountId, serverId) => {
 
 module.exports.editServer = async (accountId, serverId, configuration) => {
     const server = await Server.findByPk(serverId);
-    const accessCheck = await validateServerAccess(accountId, server, "You don't have permission to edit this server");
+    const accessCheck = await validateServerWriteAccess(accountId, server, "You don't have permission to edit this server");
 
     if (!accessCheck.valid) return accessCheck;
 
@@ -198,7 +212,7 @@ module.exports.listServers = async (accountId) => {
             folder.entries.push({
                 type: "server", id: server.id, icon: server.icon, name: server.name,
                 position: server.position, identities: JSON.parse(server.identities || "[]"), protocol: server.protocol,
-                ip: server.ip,
+                ip: server.ip, accountId: server.accountId, organizationId: server.organizationId,
             });
         }
     });
@@ -220,6 +234,7 @@ module.exports.listServers = async (accountId) => {
             folder.entries.push({
                 type: "pve-server", id: server.id, name: server.name, online: server.online === 1,
                 entries: JSON.parse(server.resources || "[]"), ip: server.ip,
+                accountId: server.accountId, organizationId: server.organizationId,
             });
         }
     });
@@ -231,7 +246,7 @@ module.exports.duplicateServer = async (accountId, serverId) => {
     const server = await Server.findByPk(serverId);
     if (!server) return { code: 404, message: "Server not found" };
 
-    const accessCheck = await validateServerAccess(accountId, server);
+    const accessCheck = await validateServerWriteAccess(accountId, server);
 
     if (!accessCheck.valid) return accessCheck;
 
@@ -300,3 +315,4 @@ module.exports.importSSHConfig = async (accountId, configuration) => {
 };
 
 module.exports.validateServerAccess = validateServerAccess;
+module.exports.validateServerWriteAccess = validateServerWriteAccess;

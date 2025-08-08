@@ -85,6 +85,21 @@ export const ServerProvider = ({ children }) => {
         return null;
     }
 
+    const getFolderById = (folderId, entries) => {
+        if (!entries) entries = servers;
+        for (const entry of entries) {
+            if (entry.id === parseInt(folderId) && entry.type === "folder") {
+                return entry;
+            } else if (entry.type === "folder" || entry.type === "organization") {
+                const result = getFolderById(folderId, entry.entries);
+                if (result) {
+                    return result;
+                }
+            }
+        }
+        return null;
+    }
+
     useEffect(() => {
         if (user) {
             loadServers();
@@ -100,7 +115,7 @@ export const ServerProvider = ({ children }) => {
     }, [user]);
 
     return (
-        <ServerContext.Provider value={{servers, loadServers, getServerById, getPVEServerById, getPVEContainerById, retrieveServerById,getServerListInFolder}}>
+        <ServerContext.Provider value={{servers, loadServers, getServerById, getPVEServerById, getPVEContainerById, retrieveServerById, getServerListInFolder, getFolderById}}>
             {children}
         </ServerContext.Provider>
     )
