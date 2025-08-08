@@ -9,6 +9,16 @@ exports.hasOrganizationAccess = async (accountId, organizationId) => {
     return !!membership;
 };
 
+exports.hasOrganizationAdminAccess = async (accountId, organizationId) => {
+    if (!organizationId) return false;
+
+    const membership = await OrganizationMember.findOne({ 
+        where: { accountId, organizationId, status: "active", role: "owner" } 
+    });
+
+    return !!membership;
+};
+
 exports.validateFolderAccess = async (accountId, folderId) => {
     const folder = await Folder.findByPk(folderId);
     if (!folder) {
