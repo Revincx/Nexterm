@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useContext } from "react";
+import { useEffect, useRef, useState, useContext, useCallback } from "react";
 import { UserContext } from "@/common/contexts/UserContext.jsx";
 import { useAI } from "@/common/contexts/AIContext.jsx";
 import { Terminal as Xterm } from "@xterm/xterm";
@@ -33,7 +33,7 @@ const XtermRenderer = ({ session, disconnectFromServer, pve }) => {
 
             if (terminalElement) {
                 const rect = terminalElement.getBoundingClientRect();
-                const buffer = term.buffer.active;
+                const buffer = term.buffer.active;``
 
                 const charWidth = rect.width / term.cols;
                 const charHeight = rect.height / term.rows;
@@ -60,6 +60,66 @@ const XtermRenderer = ({ session, disconnectFromServer, pve }) => {
             wsRef.current.send(command);
         }
     };
+
+    // 处理复制功能 - 使用兼容性更好的方法
+    const copyToClipboard = useCallback((text) => {
+        // 创建一个临时文本区域来执行复制操作
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';  // 避免滚动到底部
+        textArea.style.top = '0';
+        textArea.style.left = '0';
+        textArea.style.width = '2em';
+        textArea.style.height = '2em';
+        textArea.style.padding = '0';
+        textArea.style.border = 'none';
+        textArea.style.outline = 'none';
+        textArea.style.boxShadow = 'none';
+        textArea.style.background = 'transparent';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
+                console.log('复制成功');
+            } else {
+                console.log('复制命令执行但可能未成功');
+                
+                // 尝试使用现代API作为后备方案（仅在HTTPS环境中）
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text)
+                        .then(() => console.log("使用现代API复制成功"))
+                        .catch(err => console.error("现代API复制失败:", err));
+                }
+            }
+        } catch (err) {
+            console.error('复制失败:', err);
+            
+            // 尝试使用现代API作为后备方案（仅在HTTPS环境中）
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text)
+                    .then(() => console.log("使用现代API复制成功"))
+                    .catch(err => console.error("现代API复制失败:", err));
+            }
+        }
+        
+        document.body.removeChild(textArea);
+    }, []);
+    
+    const handleCopy = useCallback((e) => {
+        if (e.ctrlKey && e.shiftKey && (e.key === 'c' || e.key === 'C' || e.keyCode === 67) && termRef.current) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const selection = termRef.current.getSelection();
+            if (selection) {
+                copyToClipboard(selection);
+            }
+        }
+    }, [copyToClipboard]);
 
     useEffect(() => {
         if (!sessionToken) return;
@@ -105,6 +165,25 @@ const XtermRenderer = ({ session, disconnectFromServer, pve }) => {
             fitAddon.fit();
             wsRef.current.send(`\x01${term.cols},${term.rows}`);
         };
+
+        // 添加自定义的复制事件处理函数
+        const handleCopyEvent = (e) => {
+            if (e.ctrlKey && e.shiftKey && (e.key === 'c' || e.key === 'C' || e.keyCode === 67)) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const selection = term.getSelection();
+                if (selection) {
+                    // 使用通用的复制函数
+                    copyToClipboard(selection);
+                }
+                
+                return false;
+            }
+        };
+        
+        // 监听终端容器的按键事件
+        ref.current.addEventListener("keydown", handleCopyEvent, true);
 
         window.addEventListener("resize", handleResize);
 
